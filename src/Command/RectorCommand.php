@@ -61,12 +61,27 @@ class RectorCommand extends BaseCommand
             $basePath = rtrim($basePath, '/');
             $paths = glob(pathinfo($basePath, PATHINFO_DIRNAME) . DIRECTORY_SEPARATOR . 'plugins/*', GLOB_ONLYDIR);
             $result = true;
+            $skip = !empty($args->getOption('after')) || !empty($args->getOption('from'));
             foreach($paths as $p){
+                if($skip){
+                    if($args->getOption('after') == pathinfo($p, PATHINFO_FILENAME)){
+                        $skip = false;
+                    }
+                    if($args->getOption('from') == pathinfo($p, PATHINFO_FILENAME)){
+                        $skip = false;
+                    }else{
+                        continue;
+                    }
+                }
                 $subArgs = $args->getArguments();
                 $subArgs['path'] = $p . DIRECTORY_SEPARATOR . pathinfo($basePath, PATHINFO_FILENAME);
                 $io->info('Migrating '.$subArgs['path']);
-                $arguments = new Arguments(array_values($subArgs), $args->getOptions(), array_keys($subArgs));
-                $result &= $this->runRector($io, $arguments, $autoload);
+                if(is_readable($subArgs['path'])){
+                    $arguments = new Arguments(array_values($subArgs), $args->getOptions(), array_keys($subArgs));
+                    $result &= $this->runRector($io, $arguments, $autoload);
+                }else{
+                    $io->info('Not readable skipping...');
+                }
             }
         }else{
             $result = $this->runRector($io, $args, $autoload);
@@ -147,7 +162,7 @@ class RectorCommand extends BaseCommand
      * looking for a `vendor/autoload.php` file.
      *
      * @param \Cake\Console\ConsoleIo $io The io object
-     * @param string $path The path to start scanning from
+     * @param string $path The path to start scanning after
      * @return string|null The path to a vendor/autoload.php or null
      */
     protected function detectAutoload(ConsoleIo $io, string $path): ?string
@@ -221,6 +236,12 @@ class RectorCommand extends BaseCommand
                 'help' => 'Run reactor on all plugins.',
                 'short' => 'p',
                 'boolean' => true,
+            ])
+            ->addOption('from', [
+                'help' => 'If plugin enabled run from this plugin.'
+            ])
+            ->addOption('after', [
+                'help' => 'If plugin enabled run after this plugin.'
             ]);
 
         return $parser;
