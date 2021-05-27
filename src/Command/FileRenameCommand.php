@@ -90,21 +90,30 @@ class FileRenameCommand extends BaseCommand
         $this->io = $io;
         $this->args = $args;
 
-        $path = (string)$args->getArgument('path');
-        if (!preg_match('/^vfs:\/\//', $path)) {
-            $path = realpath($path);
+        $basePath = (string)$args->getArgument('path');
+        if (!preg_match('/^vfs:\/\//', $basePath)) {
+            $basePath = realpath($basePath);
         }
 
-        $this->path = rtrim($path, '/') . DIRECTORY_SEPARATOR;
-        $this->git = is_dir($this->path . '.git');
+        $basePath = rtrim($basePath, '/');
+        $this->git = is_dir($basePath . DIRECTORY_SEPARATOR . '.git');
+                
+        if($args->getOption('plugin')){
+            $paths = glob($basePath . DIRECTORY_SEPARATOR . 'plugins/*', GLOB_ONLYDIR);
+        }else{
+            $paths = [$basePath];
+        }
 
-        switch ($args->getArgument('type')) {
-            case 'templates':
-                $this->processTemplates();
-                break;
-            case 'locales':
-                $this->processLocales();
-                break;
+        foreach($paths as $p){
+            $this->path = $p . DIRECTORY_SEPARATOR;
+            switch ($args->getArgument('type')) {
+                case 'templates':
+                    $this->processTemplates();
+                    break;
+                case 'locales':
+                    $this->processLocales();
+                    break;
+            }
         }
 
         return null;
@@ -373,6 +382,11 @@ class FileRenameCommand extends BaseCommand
             ->addOption('dry-run', [
                 'help' => 'Dry run.',
                 'boolean' => true,
+            ])
+            ->addOption('plugin', [
+                'help' => 'Run on all plugins',
+                'short' => 'p',
+                'boolean' => true
             ]);
 
         return $parser;

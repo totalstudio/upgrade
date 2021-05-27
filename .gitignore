@@ -5,3 +5,5 @@
 /plugins/DebugKit
 /phpunit.phar
 .phpunit*
+/nbproject/private/
+nbproject

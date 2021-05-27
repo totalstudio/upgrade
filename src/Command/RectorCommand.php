@@ -56,8 +56,21 @@ class RectorCommand extends BaseCommand
 
             return static::CODE_ERROR;
         }
-
-        $result = $this->runRector($io, $args, $autoload);
+        if($args->getOption('plugin')){
+            $basePath = realpath($args->getArgument('path'));
+            $basePath = rtrim($basePath, '/');
+            $paths = glob(pathinfo($basePath, PATHINFO_DIRNAME) . DIRECTORY_SEPARATOR . 'plugins/*', GLOB_ONLYDIR);
+            $result = true;
+            foreach($paths as $p){
+                $subArgs = $args->getArguments();
+                $subArgs['path'] = $p . DIRECTORY_SEPARATOR . pathinfo($basePath, PATHINFO_FILENAME);
+                $io->info('Migrating '.$subArgs['path']);
+                $arguments = new Arguments(array_values($subArgs), $args->getOptions(), array_keys($subArgs));
+                $result &= $this->runRector($io, $arguments, $autoload);
+            }
+        }else{
+            $result = $this->runRector($io, $args, $autoload);
+        }
         if ($result === false) {
             $io->error('Could not run rector. Ensure that `php` is on your PATH.');
 
@@ -80,7 +93,6 @@ class RectorCommand extends BaseCommand
     {
         $config = ROOT . '/config/rector/' . basename((string)$args->getOption('rules')) . '.php';
         $path = realpath((string)$args->getArgument('path'));
-
         $cmdPath = ROOT . '/vendor/bin/rector process';
         $command = sprintf(
             '%s %s --autoload-file=%s --config=%s --working-dir=%s %s',
@@ -203,6 +215,11 @@ class RectorCommand extends BaseCommand
             ])
             ->addOption('dry-run', [
                 'help' => 'Enable to get a preview of what modifications will be applied.',
+                'boolean' => true,
+            ])
+            ->addOption('plugin', [
+                'help' => 'Run reactor on all plugins.',
+                'short' => 'p',
                 'boolean' => true,
             ]);
 
